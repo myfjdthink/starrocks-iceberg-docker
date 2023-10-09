@@ -43,65 +43,28 @@ services:
       minio:
         condition: service_healthy
 
-  postgres:
-    image: postgres
-    hostname: postgres
-    container_name: postgres
-    environment:
-      - POSTGRES_PASSWORD=ngods
-      - POSTGRES_USER=ngods
-      - POSTGRES_DB=ngods
-      - PGDATA=/var/lib/postgresql/data/pgdata
-    ports:
-      - '5432:5432'
-    volumes:
-      - ./data/postgres:/var/lib/postgresql/data/pgdata
-    networks:
-      - ndsnet
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ngods"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  metastore:
-    build: metastore/
-    container_name: metastore
-    environment:
-      - AWS_ACCESS_KEY_ID=minio
-      - AWS_SECRET_ACCESS_KEY=minio123
-      - AWS_REGION=us-east-1
-    ports:
-      - '9083:9083' # Metastore thrift
-    networks:
-      ndsnet:
-        aliases:
-          - metastore
-    depends_on:
-      postgres:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
   trino:
-    image: trinodb/trino:408
+    image: trinodb/trino:425
     container_name: trino
     volumes:
       - ./trino/catalog:/etc/trino/catalog
     ports:
       - '8060:8080'
-    networks:
-      ndsnet:
-        aliases:
-          - trino
     depends_on:
-      postgres:
+      minio:
         condition: service_healthy
+
+  starrocks:
+    image: starrocks/allin1-ubuntu:3.1.2
+    container_name: starrocks
+    ports:
+      - '9030:9030'
+      - '8030:8030'
+      - '8040:8040'
+    depends_on:
       minio:
         condition: service_healthy
 networks:
   ndsnet:
-    name: ndsnet
+    name: star_net
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.80.0/16
